@@ -30,12 +30,16 @@ export default function OverviewPage({ scan, findings, onOpenFinding, onRescan }
         <div>
           <h1 className="page-title">Scan results</h1>
           <div className="scan-meta">
-            <span className="meta-chip">{scan.meta.scan_id}</span>
-            <span className="meta-chip">{scan.files.length} file{scan.files.length === 1 ? '' : 's'} scanned</span>
+            {scan.meta?.scan_id && <span className="meta-chip">{scan.meta.scan_id}</span>}
+            <span className="meta-chip">
+              {scan.repo
+                  ? `GitHub: ${scan.repo.owner}/${scan.repo.repo}`
+                  : `${scan.files?.length ?? 0} file${scan.files?.length === 1 ? '' : 's'} scanned`}
+              </span>
             <span className="meta-chip">{s.uniqueAlgorithms} algorithms</span>
             <span className="meta-chip">profile: {scan.profile.label} (X={scan.profile.X}, Y={scan.profile.Y})</span>
             <span className="meta-chip">scenario: {scan.scenario.label} (Z={scan.scenario.Z})</span>
-            <span className="meta-chip">{scan.meta.duration_ms} ms</span>
+            {scan.meta?.duration_ms != null && <span className="meta-chip">{scan.meta.duration_ms} ms</span>}
           </div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={onRescan}>← New scan</button>

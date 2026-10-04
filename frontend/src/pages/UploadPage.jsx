@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import sample from '../data/sampleResults.json';
 
 const STAGES = [
@@ -10,6 +10,21 @@ const STAGES = [
   'Generating CBOM…',
 ];
 
+const GITHUB_STAGES = [
+  'Resolving latest commit…',
+  'Cloning & scanning via CBOMkit…',
+  'Detecting cryptographic assets…',
+  'Scoring quantum risk (Shor / Grover)…',
+  'Applying Mosca X + Y vs Z…',
+  'Finalizing results…',
+];
+
+function parseGithubUrl(url) {
+  const match = url.trim().match(/github\.com\/([^/\s]+)\/([^/?#\s]+)/);
+  if (!match) return null;
+  return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
+}
+
 export default function UploadPage({ onComplete }) {
   const [files, setFiles] = useState([]);
   const [profileId, setProfileId] = useState('');
@@ -17,16 +32,23 @@ export default function UploadPage({ onComplete }) {
   const [scanning, setScanning] = useState(false);
   const [stageIdx, setStageIdx] = useState(0);
   const [dragOver, setDragOver] = useState(false);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [error, setError] = useState('');
   const inputRef = useRef(null);
+  const tickRef = useRef(null);
+
+  useEffect(() => () => clearInterval(tickRef.current), []);
 
   const profile = sample.profiles_available.find((p) => p.id === profileId);
   const scenario = sample.scenarios_available.find((s) => s.id === scenarioId);
-  const ready = files.length > 0 && profile && scenario;
 
-  // function addFiles(list) {
-  //   const names = Array.from(list).map((f) => f.name);
-  //   setFiles((prev) => [...new Set([...prev, ...names])]);
-  // }
+  const trimmedUrl = repoUrl.trim();
+  const parsedRepo = parseGithubUrl(trimmedUrl);
+  const urlInvalid = trimmedUrl !== '' && !parsedRepo;
+  const hasInput = Boolean(parsedRepo) || files.length > 0;
+  const ready = Boolean(hasInput && !urlInvalid && profile && scenario);
+
+  const stages = parsedRepo ? GITHUB_STAGES : STAGES;
 
   function addFiles(list) {
     const incoming = Array.from(list);
@@ -38,28 +60,32 @@ export default function UploadPage({ onComplete }) {
     });
   }
 
-  function runScan() {
+  async function runScan() {
     if (!ready) return;
+    setError('');
     setScanning(true);
     setStageIdx(0);
-    let i = 0;
-    const tick = () => {
-      i += 1;
-      if (i < STAGES.length) {
-        setStageIdx(i);
-        setTimeout(tick, 260 + Math.random() * 200);
-      } else {
-        setTimeout(() => {
-          onComplete({
-            files,
-            profile,
-            scenario,
-            meta: sample.scan_metadata,
-          });
-        }, 350);
-      }
-    };
-    setTimeout(tick, 350);
+
+    // Cosmetic progress: creeps forward but never reaches the last stage
+    // until the real request finishes (page switches away on success).
+    clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => {
+      setStageIdx((i) => Math.min(i + 1, stages.length - 2));
+    }, 1500);
+
+    try {
+      // A valid GitHub URL takes precedence over uploaded files.
+      await onComplete(
+          parsedRepo
+              ? { repo: parsedRepo, profile, scenario }
+              : { files, profile, scenario, meta: sample.scan_metadata }
+      );
+    } catch (err) {
+      setError(err?.message || 'Scan failed. Check that the backend and CBOMkit are running.');
+      setScanning(false);
+    } finally {
+      clearInterval(tickRef.current);
+    }
   }
 
   if (scanning) {
@@ -72,11 +98,15 @@ export default function UploadPage({ onComplete }) {
               <path d="M14 2v6h6" />
             </svg>
           </div>
-          <div className="dropzone__title">Scanning {files.length} file{files.length === 1 ? '' : 's'}…</div>
-          <div className="scan-progress__bar">
-            <div className="scan-progress__fill" style={{ width: `${((stageIdx + 1) / STAGES.length) * 100}%` }} />
+          <div className="dropzone__title">
+            {parsedRepo
+                ? `Scanning ${parsedRepo.owner}/${parsedRepo.repo}…`
+                : `Scanning ${files.length} file${files.length === 1 ? '' : 's'}…`}
           </div>
-          <div className="scan-progress__stage">{STAGES[stageIdx]}</div>
+          <div className="scan-progress__bar">
+            <div className="scan-progress__fill" style={{ width: `${((stageIdx + 1) / stages.length) * 100}%` }} />
+          </div>
+          <div className="scan-progress__stage">{stages[stageIdx]}</div>
         </div>
       </div>
     );
@@ -110,7 +140,7 @@ export default function UploadPage({ onComplete }) {
             </svg>
           </div>
           <div className="dropzone__title">Drop Resources here.</div>
-          <div className="dropzone__hint">.py · .java · .js · .go · .c · whole .zip or repo link </div>
+          <div className="dropzone__hint">.py · .java · .js · .go · .c · whole .zip</div>
           <input
             ref={inputRef}
             type="file"
@@ -134,6 +164,31 @@ export default function UploadPage({ onComplete }) {
             ))}
           </div>
         )}
+
+        <div className="or-divider"><span>or scan a GitHub repository</span></div>
+
+        <input
+            type="text"
+            className={`field ${urlInvalid ? 'field--invalid' : ''}`}
+            placeholder="https://github.com/owner/repo"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            spellCheck={false}
+        />
+        {urlInvalid && <div className="field-error">That doesn't look like a GitHub repo URL.</div>}
+        {parsedRepo && files.length > 0 && (
+            <div className="param-hint" style={{ marginTop: 10 }}>
+              Both a repo and files are provided. The GitHub repo will be scanned; uploaded files are ignored.
+            </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          {/*<button className="btn btn-primary" onClick={runScan} disabled={!ready}>*/}
+          {/*  Run scan*/}
+          {/*</button>*/}
+          {error && <div className="scan-error">{error}</div>}
+        </div>
+
       </div>
 
       {/* Step 2 — parameters */}

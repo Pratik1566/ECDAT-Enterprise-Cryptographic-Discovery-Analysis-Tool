@@ -295,6 +295,61 @@ a { color: var(--steel-600); }
 
 .param-hint strong { color: var(--steel-700); font-family: var(--font-mono); font-size: 12.5px; }
 
+/* ── GitHub URL input ────────────────────────────────────────────── */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 14px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+input.field {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input.field::placeholder { color: var(--ink-2); opacity: 0.7; }
+input.field:focus {
+  outline: none;
+  border-color: var(--steel-500);
+  box-shadow: 0 0 0 3px var(--steel-100);
+}
+input.field--invalid { border-color: var(--critical); }
+input.field--invalid:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
+
+.field-error {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--critical);
+}
+
+.scan-error {
+  max-width: 560px;
+  padding: 10px 14px;
+  border: 1px solid var(--critical);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--critical);
+  font-size: 14px;
+  text-align: left;
+}
+
 select.field {
   width: 100%;
   padding: 11px 14px;

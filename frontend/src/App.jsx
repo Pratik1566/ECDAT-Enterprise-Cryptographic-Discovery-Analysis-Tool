@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import UploadPage from './pages/UploadPage';
 import OverviewPage from './pages/OverviewPage';
 import DetailPage from './pages/DetailPage';
-import { runScan } from './lib/api';
+import {runScan, runScanFromGithub} from './lib/api';
 
 export default function App() {
   const [view, setView] = useState('upload'); // 'upload' | 'overview' | 'detail'
@@ -17,7 +17,9 @@ export default function App() {
   // Until then we enrich the bundled sample JSON with the chosen profile/scenario.
   async function handleScanComplete(params) {
     setScan(params);
-    const data = await runScan(params.files, params.profile, params.scenario);
+    const data = params.repo
+        ? await runScanFromGithub(params.repo.owner, params.repo.repo, params.profile, params.scenario)
+        : await runScan(params.files, params.profile, params.scenario);
     setFindings(data.findings);
     setActiveId(null);
     setView('overview');

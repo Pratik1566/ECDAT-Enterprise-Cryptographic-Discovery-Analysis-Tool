@@ -1,3 +1,4 @@
+import { scanRepo } from './cbomkit';
 const API_URL = 'http://localhost:8080';
 
 function inferType(asset) {
@@ -83,4 +84,11 @@ export async function runScan(files, profile, scenario) {
         scan_metadata: { files_scanned: files.length },
         findings: data.assets.map(toFinding),
     };
+}
+
+export async function runScanFromGithub(owner, repo, profile, scenario) {
+    const cbom = await scanRepo(owner, repo);
+    const blob = new Blob([JSON.stringify(cbom)], { type: 'application/json' });
+    const file = new File([blob], 'scan.cbom.json');
+    return runScan([file], profile, scenario); // your already-working function, untouched
 }
